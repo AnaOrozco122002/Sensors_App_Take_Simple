@@ -7,6 +7,8 @@
         android:maxSdkVersion="28"/>
     <!-- Lectura es útil para abrir o verificar archivos guardados -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+
 
     <application
         android:label="proyects"
