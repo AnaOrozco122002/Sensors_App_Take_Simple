@@ -13,8 +13,8 @@ class SensorPage extends StatefulWidget {
 
 class _SensorPageState extends State<SensorPage> {
   bool _isRecording = false;
-  final List<String> _frequencies = ['Por defecto', '20 Hz', '30 Hz', '50 Hz', '60 Hz'];
-  String _selectedFrequency = 'Por defecto';
+  final List<String> _frequencies = ['20 Hz', '30 Hz', '50 Hz', '60 Hz'];
+  String _selectedFrequency = '20 Hz';
 
   double? _lastRecordedAccelFreq;
   double? _lastRecordedGyroFreq;
@@ -22,6 +22,10 @@ class _SensorPageState extends State<SensorPage> {
   @override
   void initState() {
     super.initState();
+
+    // Establece frecuencia inicial a 20 Hz
+    widget.controller.setFrequency('20 Hz', const Duration(milliseconds: 50));
+
     widget.controller.onNewFrequency = (accelFreq, gyroFreq) {
       setState(() {
         _lastRecordedAccelFreq = accelFreq;
@@ -86,19 +90,12 @@ class _SensorPageState extends State<SensorPage> {
       case '60 Hz':
         widget.controller.setFrequency('60 Hz', const Duration(milliseconds: 16));
         break;
-      default:
-        widget.controller.setFrequency('Por defecto');
-        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final defaultInfo = (_selectedFrequency == 'Por defecto')
-        ? '\n(accel: ${_lastRecordedAccelFreq?.toStringAsFixed(2) ?? "?"} Hz, '
-        'gyro: ${_lastRecordedGyroFreq?.toStringAsFixed(2) ?? "?"} Hz)'
-        : '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Datos en Tiempo Real')),
@@ -136,7 +133,9 @@ class _SensorPageState extends State<SensorPage> {
                           ValueListenableBuilder<String>(
                             valueListenable: widget.controller.frequencyLabel,
                             builder: (_, label, __) => Text(
-                              'Frecuencia usada: $label$defaultInfo',
+                              'Frecuencia usada: $label\n'
+                                  '(accel: ${_lastRecordedAccelFreq?.toStringAsFixed(2) ?? "?"} Hz, '
+                                  'gyro: ${_lastRecordedGyroFreq?.toStringAsFixed(2) ?? "?"} Hz)',
                               textAlign: TextAlign.start,
                               style: theme.textTheme.bodyMedium,
                             ),
