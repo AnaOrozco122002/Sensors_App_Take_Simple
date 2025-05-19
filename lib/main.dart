@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'sensor_page.dart';
 import 'visualization_page.dart';
 import 'settings_page.dart';
+import 'sensor_controller.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -54,10 +56,10 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
-
+  final SensorController _controller = SensorController();
   late final List<Widget> _pages = [
-    const SensorPage(),
-    const VisualizationPage(),
+    SensorPage(controller: _controller),
+    VisualizationPage(controller: _controller),
     SettingsPage(
       currentMode: widget.currentTheme,
       onThemeChanged: widget.onThemeChanged,

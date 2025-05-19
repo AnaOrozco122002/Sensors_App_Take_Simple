@@ -2,143 +2,121 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'sensor_controller.dart';
 
-class VisualizationPage extends StatefulWidget {
-  const VisualizationPage({super.key});
+class VisualizationPage extends StatelessWidget {
+  final SensorController controller;
 
-  @override
-  State<VisualizationPage> createState() => _VisualizationPageState();
-}
+  const VisualizationPage({super.key, required this.controller});
 
-class _VisualizationPageState extends State<VisualizationPage> {
-  final SensorController _controller = SensorController();
-  bool _showAccelerometer = true;
-  bool _showGyroscope = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.startListening();
+  List<FlSpot> _extractAxisData(List<List<double>> data, int axisIndex) {
+    final maxPoints = 200;
+    final start = data.length > maxPoints ? data.length - maxPoints : 0;
+    return List.generate(data.length - start, (i) {
+      final x = i.toDouble();
+      final y = data[start + i].length > axisIndex ? data[start + i][axisIndex] : 0.0;
+      return FlSpot(x, y);
+    });
   }
 
-  @override
-  void dispose() {
-    _controller.stopListening();
-    super.dispose();
-  }
+  Widget _buildChart(List<List<double>> data, int axisIndex, String label, Color color) {
+    final spots = _extractAxisData(data, axisIndex);
 
-  void _exportData() async {
-    final path = await _controller.exportToCsv(context);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Datos exportados en: $path')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Visualización de Sensores'),
-        actions: [
-          IconButton(
-            onPressed: _exportData,
-            icon: const Icon(Icons.download),
-            tooltip: 'Exportar CSV',
-          )
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _showAccelerometer,
-                  onChanged: (value) => setState(() => _showAccelerometer = value!),
-                ),
-                const Text('Acelerómetro'),
-                Checkbox(
-                  value: _showGyroscope,
-                  onChanged: (value) => setState(() => _showGyroscope = value!),
-                ),
-                const Text('Giroscopio'),
-              ],
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: LineChart(
+        LineChartData(
+          minY: -20,
+          maxY: 20,
+          gridData: FlGridData(show: true),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                interval: 20,
+                getTitlesWidget: (value, meta) {
+                  return value % 40 == 0
+                      ? Text('${value.toInt()}', style: const TextStyle(fontSize: 10))
+                      : const SizedBox.shrink();
+                },
+              ),
             ),
-            const SizedBox(height: 10),
-            if (_showAccelerometer) _buildChart('Acelerómetro', _controller.accelerometerData),
-            if (_showGyroscope) _buildChart('Giroscopio', _controller.gyroscopeData),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChart(String title, List<List<double>> data) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 200,
-          child: LineChart(
-            LineChartData(
-              titlesData: FlTitlesData(show: false),
-              gridData: FlGridData(show: true),
-              lineBarsData: [
-                _createLine(data, 0, Colors.red),   // Eje X
-                _createLine(data, 1, Colors.green), // Eje Y
-                _createLine(data, 2, Colors.blue),  // Eje Z
-              ],
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: 5,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toStringAsFixed(0),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
+            ),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipBorderRadius: BorderRadius.circular(8),
+              tooltipMargin: 8,
+              getTooltipColor: (touchedSpot) => Colors.black,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  return LineTooltipItem(
+                    '${spot.x.toInt()}, ${spot.y.toStringAsFixed(2)}',
+                    const TextStyle(color: Colors.white),
+                  );
+                }).toList();
+              },
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Legend(color: Colors.red, label: 'X'),
-            Legend(color: Colors.green, label: 'Y'),
-            Legend(color: Colors.blue, label: 'Z'),
+          borderData: FlBorderData(show: true),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: color,
+              barWidth: 2,
+              dotData: FlDotData(show: false),
+            ),
           ],
         ),
-        const SizedBox(height: 16),
-      ],
+      ),
     );
   }
-
-  LineChartBarData _createLine(List<List<double>> data, int axis, Color color) {
-    final spots = List.generate(
-      data.length,
-          (i) => FlSpot(i.toDouble(), data[i][axis]),
-    );
-
-    return LineChartBarData(
-      spots: spots,
-      isCurved: false,
-      color: color,
-      barWidth: 2,
-      dotData: FlDotData(show: false),
-    );
-  }
-}
-
-class Legend extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const Legend({super.key, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 12, height: 12, color: color),
-        const SizedBox(width: 4),
-        Text(label),
-      ],
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Visualización en Tiempo Real')),
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: ListView(
+          children: [
+            const Text('Acelerómetro', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _buildChart(controller.accelerometerData, 1, 'X', theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            _buildChart(controller.accelerometerData, 2, 'Y', theme.colorScheme.secondary),
+            const SizedBox(height: 16),
+            _buildChart(controller.accelerometerData, 3, 'Z', theme.colorScheme.tertiary),
+
+            const SizedBox(height: 24),
+            const Text('Giroscopio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _buildChart(controller.gyroscopeData, 1, 'X', theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            _buildChart(controller.gyroscopeData, 2, 'Y', theme.colorScheme.secondary),
+            const SizedBox(height: 16),
+            _buildChart(controller.gyroscopeData, 3, 'Z', theme.colorScheme.tertiary),
+          ],
+        ),
+      ),
     );
   }
 }
